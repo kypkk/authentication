@@ -26,11 +26,15 @@ mongoose
   });
 
 app.get("/", (req, res) => {
-  res.render("index.ejs");
+  res.render("index");
 });
 
 app.get("/signup", (req, res) => {
-  res.render("signup.ejs");
+  res.render("signup");
+});
+
+app.get("/login", (req, res) => {
+  res.render("login");
 });
 
 app.post("/signup", (req, res, next) => {
@@ -50,6 +54,20 @@ app.post("/signup", (req, res, next) => {
       });
   } catch (err) {
     next(err);
+  }
+});
+
+app.post("/login", async (req, res, next) => {
+  let { username, password } = req.body;
+  try {
+    let foundUser = await User.findOne({ username });
+    if (foundUser && foundUser.password === password) {
+      res.render("secret");
+    } else {
+      res.send("Invalid Username or password!");
+    }
+  } catch (err) {
+    res.send(err);
   }
 });
 
