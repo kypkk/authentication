@@ -7,6 +7,8 @@ const cookie = require("cookie-parser");
 const session = require("express-session");
 const flash = require("connect-flash");
 const User = require("./models/user");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -39,22 +41,35 @@ app.get("/login", (req, res) => {
 
 app.post("/signup", (req, res, next) => {
   let { username, password } = req.body;
-  let newUser = new User({ username, password });
-  try {
-    newUser
-      .save()
-      .then(() => {
-        res.send("Data has been saved.");
-        console.log("New User has been successfully saved");
-      })
-      .catch((e) => {
-        res.send("Error!");
-        console.log("Fail to save new user");
-        console.log(e);
-      });
-  } catch (err) {
-    next(err);
-  }
+  bcrypt.genSalt(saltRounds, function (err, salt) {
+    if (err) {
+      next(err);
+    }
+    console.log(`My salt is ${salt}`);
+    bcrypt.hash(password, salt, function (err, hash) {
+      // Store hash in your password DB.
+      if (err) {
+        next(err);
+      }
+      console.log(`My hash is ${hash}`);
+      let newUser = new User({ username, password: hash });
+      try {
+        newUser
+          .save()
+          .then(() => {
+            res.send("Data has been saved.");
+            console.log("New User has been successfully saved");
+          })
+          .catch((e) => {
+            res.send("Error!");
+            console.log("Fail to save new user");
+            console.log(e);
+          });
+      } catch (err) {
+        next(err);
+      }
+    });
+  });
 });
 
 app.post("/login", async (req, res, next) => {
