@@ -39,47 +39,65 @@ app.get("/login", (req, res) => {
   res.render("login");
 });
 
-app.post("/signup", (req, res, next) => {
+app.post("/signup", async (req, res, next) => {
   let { username, password } = req.body;
-  bcrypt.genSalt(saltRounds, function (err, salt) {
-    if (err) {
-      next(err);
+  try {
+    let foundUser = await User.findOne({ username });
+    if (foundUser) {
+      res.send("Username has been taken!");
+    } else {
+      bcrypt.genSalt(saltRounds, function (err, salt) {
+        if (err) {
+          next(err);
+        }
+
+        bcrypt.hash(password, salt, function (err, hash) {
+          // Store hash in your password DB.
+          if (err) {
+            next(err);
+          }
+
+          let newUser = new User({ username, password: hash });
+          try {
+            newUser
+              .save()
+              .then(() => {
+                res.send("Data has been saved.");
+                console.log("New User has been successfully saved");
+              })
+              .catch((e) => {
+                res.send("Error!");
+                console.log("Fail to save new user");
+                console.log(e);
+              });
+          } catch (err) {
+            next(err);
+          }
+        });
+      });
     }
-    console.log(`My salt is ${salt}`);
-    bcrypt.hash(password, salt, function (err, hash) {
-      // Store hash in your password DB.
-      if (err) {
-        next(err);
-      }
-      console.log(`My hash is ${hash}`);
-      let newUser = new User({ username, password: hash });
-      try {
-        newUser
-          .save()
-          .then(() => {
-            res.send("Data has been saved.");
-            console.log("New User has been successfully saved");
-          })
-          .catch((e) => {
-            res.send("Error!");
-            console.log("Fail to save new user");
-            console.log(e);
-          });
-      } catch (err) {
-        next(err);
-      }
-    });
-  });
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.post("/login", async (req, res, next) => {
   let { username, password } = req.body;
   try {
     let foundUser = await User.findOne({ username });
-    if (foundUser && foundUser.password === password) {
-      res.render("secret");
+    if (foundUser) {
+      bcrypt.compare(password, foundUser.password, function (err, result) {
+        if (err) {
+          next(err);
+        }
+        if (result === true) {
+          res.render("secret");
+        } else {
+          res.send("Username or password not correct");
+        }
+      });
     } else {
-      res.send("Invalid Username or password!");
+      res.send("Username or password not correct");
     }
   } catch (err) {
     res.send(err);
