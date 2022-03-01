@@ -8,11 +8,29 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const User = require("./models/user");
 const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
 const saltRounds = 10;
 
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser("my Secret"));
+app.use(
+  session({
+    secret: "my Secret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+app.use(flash());
 app.set("view engine", "ejs");
+
+const requireLogin = (req, res, next) => {
+  if (!req.session.verified == true) {
+    res.redirect("login");
+  } else {
+    next();
+  }
+};
 
 mongoose
   .connect("mongodb://localhost:27017/usernameAndPassword", {
@@ -37,6 +55,10 @@ app.get("/signup", (req, res) => {
 
 app.get("/login", (req, res) => {
   res.render("login");
+});
+
+app.get("/secret", requireLogin, (req, res) => {
+  res.render("secret");
 });
 
 app.post("/signup", async (req, res, next) => {
@@ -91,7 +113,8 @@ app.post("/login", async (req, res, next) => {
           next(err);
         }
         if (result === true) {
-          res.render("secret");
+          req.session.verified = true;
+          res.redirect("secret");
         } else {
           res.send("Username or password not correct");
         }
